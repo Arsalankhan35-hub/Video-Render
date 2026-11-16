@@ -1,6 +1,10 @@
 # Motioncraft — Local AI Video Studio
 
-A no-build, local-first app for creating short animated videos. It includes a built-in demo that works offline without an API key, plus optional AI storyboards and voice-over using supported providers.
+Motioncraft is a local-first AI animation video maker that lets users enter their own API key, choose a supported model provider, describe the video they want, and generate a short animated storyboard with captions, narration, and exportable video output. The app supports OpenAI-compatible providers, lets users control video duration, adds optional AI voice-over, and renders a preview in the browser before exporting a WebM video file.
+
+This project is designed for local desktop use. It includes an offline demo mode that works without an API key, plus a full AI generation flow for users who want to connect to supported providers such as OpenAI, OpenRouter, Groq, Together AI, Mistral, DeepSeek, and Fireworks AI.
+
+A small, local-first MVP for turning a prompt into a short animated video. Choose an OpenAI-compatible provider and model, enter your own API key, generate a scene plan with narration and captions, and export the result as a downloadable animation.
 
 ## Quick start
 
