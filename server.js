@@ -4,26 +4,42 @@ const path = require('node:path');
 const { URL } = require('node:url');
 
 const ROOT = __dirname;
-const PORT = Number(process.env.PORT || 3000);
 const PUBLIC = path.join(ROOT, 'public');
+const HOST = process.env.HOST || '127.0.0.1';
+const PORT = Number(process.env.PORT || 3000);
+const MAX_BODY_BYTES = 1_000_000;
 
-// Only route requests to known OpenAI-compatible providers. API keys are received
-// per request and are never written to disk or retained by this server.
+if (Number(process.versions.node.split('.')[0]) < 18) {
+  console.error('Node.js 18 or newer is required. Install the current LTS version from https://nodejs.org/');
+  process.exit(1);
+}
+
 const PROVIDERS = {
-  openai: { base: 'https://api.openai.com/v1', host: 'api.openai.com' },
-  openrouter: { base: 'https://openrouter.ai/api/v1', host: 'openrouter.ai' },
-  groq: { base: 'https://api.groq.com/openai/v1', host: 'api.groq.com' },
-  together: { base: 'https://api.together.xyz/v1', host: 'api.together.xyz' },
-  mistral: { base: 'https://api.mistral.ai/v1', host: 'api.mistral.ai' },
-  deepseek: { base: 'https://api.deepseek.com/v1', host: 'api.deepseek.com' },
-  fireworks: { base: 'https://api.fireworks.ai/inference/v1', host: 'api.fireworks.ai' }
+  openai: 'https://api.openai.com/v1',
+  openrouter: 'https://openrouter.ai/api/v1',
+  groq: 'https://api.groq.com/openai/v1',
+  together: 'https://api.together.xyz/v1',
+  mistral: 'https://api.mistral.ai/v1',
+  deepseek: 'https://api.deepseek.com/v1',
+  fireworks: 'https://api.fireworks.ai/inference/v1'
 };
 
-const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml' };
+const MIME = {
+  '.html': 'text/html; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon'
+};
 
-function send(res, status, data, type = 'application/json; charset=utf-8') {
-  res.writeHead(status, { 'Content-Type': type, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' });
-  res.end(type.startsWith('application/json') ? JSON.stringify(data) : data);
+function sendJson(res, status, data) {
+  res.writeHead(status, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'X-Content-Type-Options': 'nosniff',
+    'Cache-Control': 'no-store'
+  });
+  res.end(JSON.stringify(data));
 }
 
 function readJson(req) {
@@ -31,64 +47,138 @@ function readJson(req) {
     let body = '';
     req.on('data', chunk => {
       body += chunk;
-      if (body.length > 1_000_000) { reject(new Error('Request is too large.')); req.destroy(); }
+      if (Buffer.byteLength(body) > MAX_BODY_BYTES) {
+        reject(new Error('Request is too large.'));
+        req.destroy();
+      }
     });
     req.on('end', () => {
-      try { resolve(JSON.parse(body || '{}')); } catch { reject(new Error('Invalid JSON request.')); }
+      try {
+        resolve(JSON.parse(body || '{}'));
+      } catch {
+        reject(new Error('Invalid JSON request.'));
+      }
     });
     req.on('error', reject);
   });
 }
 
-async function providerRequest(req, res, suffix, body) {
-  const provider = PROVIDERS[body.provider];
-  const key = typeof body.apiKey === 'string' ? body.apiKey.trim() : '';
-  if (!provider) return send(res, 400, { error: 'Choose a supported provider.' });
-  if (!key || key.length > 500) return send(res, 400, { error: 'Enter a valid API key.' });
-  if (req.headers.origin && new URL(req.headers.origin).host !== req.headers.host) return send(res, 403, { error: 'Cross-origin requests are not allowed.' });
+async function callProvider(req, res, endpoint, body) {
+  const baseUrl = PROVIDERS[body.provider];
+  const apiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : '';
+
+  if (!baseUrl) return sendJson(res, 400, { error: 'Select a supported API provider.' });
+  if (!apiKey || apiKey.length > 500) return sendJson(res, 400, { error: 'Enter a valid API key.' });
+  if (!body.payload || typeof body.payload !== 'object') return sendJson(res, 400, { error: 'Request payload is missing.' });
+
+  // This app is intended for local use. Refuse requests from other origins.
+  if (req.headers.origin) {
+    try {
+      const origin = new URL(req.headers.origin);
+      if (origin.host !== req.headers.host) return sendJson(res, 403, { error: 'Cross-origin requests are not allowed.' });
+    } catch {
+      return sendJson(res, 403, { error: 'Invalid request origin.' });
+    }
+  }
 
   try {
-    const response = await fetch(`${provider.base}${suffix}`, {
+    const upstream = await fetch(`${baseUrl}${endpoint}`, {
       method: 'POST',
       redirect: 'error',
-      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(body.payload),
       signal: AbortSignal.timeout(120_000)
     });
-    if (!response.ok) {
-      const message = (await response.text()).slice(0, 1200);
-      return send(res, response.status, { error: `Provider error (${response.status}): ${message}` });
+
+    if (!upstream.ok) {
+      const message = (await upstream.text()).slice(0, 1200);
+      return sendJson(res, upstream.status, { error: `Provider error (${upstream.status}): ${message}` });
     }
-    if (suffix === '/audio/speech') {
-      const audio = Buffer.from(await response.arrayBuffer());
-      res.writeHead(200, { 'Content-Type': response.headers.get('content-type') || 'audio/mpeg', 'Content-Length': audio.length, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+
+    if (endpoint === '/audio/speech') {
+      const audio = Buffer.from(await upstream.arrayBuffer());
+      res.writeHead(200, {
+        'Content-Type': upstream.headers.get('content-type') || 'audio/mpeg',
+        'Content-Length': audio.length,
+        'Cache-Control': 'no-store',
+        'X-Content-Type-Options': 'nosniff'
+      });
       return res.end(audio);
     }
-    const result = await response.json();
-    return send(res, 200, result);
+
+    return sendJson(res, 200, await upstream.json());
   } catch (error) {
-    return send(res, 502, { error: error.name === 'TimeoutError' ? 'The provider request timed out.' : `Could not reach the provider: ${error.message}` });
+    const message = error.name === 'TimeoutError'
+      ? 'The provider request timed out. Try again.'
+      : 'Could not reach the provider. Check your internet connection and try again.';
+    return sendJson(res, 502, { error: message });
   }
 }
 
 const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  let url;
+  try {
+    url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  } catch {
+    return sendJson(res, 400, { error: 'Invalid request URL.' });
+  }
+
+  if (req.method === 'GET' && url.pathname === '/api/health') {
+    return sendJson(res, 200, { ok: true, name: 'Motioncraft', node: process.versions.node });
+  }
+
   if (req.method === 'POST' && ['/api/chat/completions', '/api/audio/speech'].includes(url.pathname)) {
     try {
       const body = await readJson(req);
-      return providerRequest(req, res, url.pathname.replace('/api', ''), body);
-    } catch (error) { return send(res, 400, { error: error.message }); }
+      return await callProvider(req, res, url.pathname.replace('/api', ''), body);
+    } catch (error) {
+      if (!res.headersSent && !res.destroyed) return sendJson(res, 400, { error: error.message });
+      return;
+    }
   }
-  if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, { error: 'Method not allowed.' });
-  let requested = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname);
-  const file = path.resolve(PUBLIC, `.${requested}`);
-  if (!file.startsWith(`${PUBLIC}${path.sep}`)) return send(res, 403, { error: 'Forbidden.' });
-  fs.readFile(file, (error, content) => {
-    if (error) return send(res, 404, 'Not found', 'text/plain; charset=utf-8');
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store' });
-    if (req.method === 'HEAD') return res.end();
-    res.end(content);
+
+  if (req.method !== 'GET' && req.method !== 'HEAD') {
+    res.writeHead(405, { Allow: 'GET, HEAD, POST' });
+    return res.end('Method not allowed');
+  }
+
+  let pathname;
+  try {
+    pathname = decodeURIComponent(url.pathname);
+  } catch {
+    return sendJson(res, 400, { error: 'Invalid path.' });
+  }
+
+  if (pathname === '/') pathname = '/index.html';
+  const file = path.resolve(PUBLIC, `.${pathname}`);
+  if (file !== PUBLIC && !file.startsWith(`${PUBLIC}${path.sep}`)) return sendJson(res, 403, { error: 'Forbidden.' });
+
+  fs.readFile(file, (error, contents) => {
+    if (error) {
+      const status = error.code === 'ENOENT' ? 404 : 500;
+      res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+      return res.end(status === 404 ? 'Not found' : 'Could not read requested file');
+    }
+    res.writeHead(200, {
+      'Content-Type': MIME[path.extname(file)] || 'application/octet-stream',
+      'X-Content-Type-Options': 'nosniff',
+      'Cache-Control': 'no-store'
+    });
+    return req.method === 'HEAD' ? res.end() : res.end(contents);
   });
 });
 
-server.listen(PORT, () => console.log(`Video Render Studio is running at http://localhost:${PORT}`));
+server.on('error', error => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Close the other app or start Motioncraft on another port:`);
+    console.error(process.platform === 'win32' ? '  set PORT=3001 && npm start' : '  PORT=3001 npm start');
+  } else {
+    console.error('Could not start Motioncraft:', error.message);
+  }
+  process.exit(1);
+});
+
+server.listen(PORT, HOST, () => {
+  console.log(`Motioncraft is ready: http://localhost:${PORT}`);
+  console.log('Keep this terminal open while using the app. Press Ctrl+C to stop it.');
+});

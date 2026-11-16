@@ -1,70 +1,67 @@
-# Motioncraft — Full AI Video Studio
+# Motioncraft — Local AI Video Studio
 
-Motioncraft is a browser-based AI video studio for creating short animated explainers and cinematic scenes from a text prompt. It supports multiple OpenAI-compatible providers, generates a storyboard with narration and captions, adds optional AI voice-over, and exports the final animation as a WebM video.
+A no-build, local-first app for creating short animated videos. It includes a built-in demo that works offline without an API key, plus optional AI storyboards and voice-over using supported providers.
 
-## Full feature set
+## Quick start
 
-- Any OpenAI-compatible provider
-- Custom API key entry per request
-- Prompt-driven storyboard generation
-- Scene durations and total video length control
-- Animated canvas preview with captions and generated shapes
-- Optional voice-over generation using TTS endpoints
-- Saved project library in local storage
-- Demo prompt for quick testing
-- Downloadable WebM export
+### Windows
 
-## Run locally
+1. Install Node.js 18 or newer from [nodejs.org](https://nodejs.org/) if needed.
+2. Download this repository and extract the ZIP, or clone it with Git.
+3. Open the extracted `Video-Render` folder.
+4. Double-click `start.bat`. It starts the local server and opens the app in your browser.
 
-Requires Node.js 18+
+Alternatively, open Command Prompt or PowerShell in the folder and run:
 
-```bash
+```powershell
+node --version
 npm start
 ```
 
-Open:
+### macOS or Linux
 
-```text
-http://localhost:3000
+1. Install Node.js 18 or newer from [nodejs.org](https://nodejs.org/) if needed.
+2. Download and extract this repository, or clone it with Git.
+3. Open Terminal in the `Video-Render` folder and run:
+
+```bash
+chmod +x start.sh
+./start.sh
 ```
 
-## Supported providers
+Or run `npm start` directly. Keep the terminal open while using the app.
 
-- OpenAI
-- OpenRouter
-- Groq
-- Together AI
-- Mistral
-- DeepSeek
-- Fireworks AI
+Then visit **http://localhost:3000** on the same computer. Stop the server with `Ctrl+C`.
 
-Use the provider's model name and API key as accepted by that service. Chat models must support OpenAI-compatible chat completions, and voice-over must support an OpenAI-compatible text-to-speech endpoint.
+> Opening `index.html` directly or viewing the GitHub page does not start the server. `localhost` is the computer running Node.js.
 
-## Notes
+## Test it without an API key
 
-- The API key is only used in-browser and is sent to the selected provider during the request.
-- It is not saved to disk.
-- The app stores generated project metadata locally in the browser for convenience.
-- Export is currently WebM because it is generated directly from the browser MediaRecorder.
+Click **Demo prompt**. This loads a sample animated storyboard locally. You can preview it and export a WebM without connecting to a provider. The demo renderer runs offline; external fonts may be unavailable without internet, in which case fallback fonts are used.
 
-## Security warning
+## Generate an AI storyboard
 
-Use this app only on trusted machines and networks. Any request sent to the local Node server includes the API key entered in the browser. The local server operator can technically inspect request data while it is being processed.
+1. Enter a prompt, select duration/style, provider, and a model ID supported by that provider.
+2. Enter your provider API key.
+3. Click **Build my video**. The app creates scenes, visual descriptions, captions, and narration.
+4. Optional voice-over uses a compatible text-to-speech API. It can incur separate provider charges.
+5. Preview and export. Browser export is WebM; MP4 conversion requires a video editor/converter.
 
-## Typical flow
+Supported OpenAI-compatible endpoints: OpenAI, OpenRouter, Groq, Together AI, Mistral, DeepSeek, and Fireworks AI. Model IDs and TTS availability vary by provider. This app makes scene plans and renders them with its built-in Canvas engine; it does not generate photorealistic video clips.
 
-1. Write a prompt.
-2. Choose a model and provider.
-3. Enter your API key.
-4. Generate the storyboard.
-5. Preview the animation.
-6. Optionally generate voice-over.
-7. Export the final WebM file.
+## API key privacy
 
-## Example prompt
+Keys are held in the page memory and sent to the local Node server only while making a provider request. They are **not written to local storage, project files, or logs**. Saved project preferences and scene data stay in this browser. Only use API keys on a computer you trust; a local process with access to the browser or device may still inspect in-memory data.
 
-"A tiny astronaut discovers a glowing garden on Mars, learns to fly, and returns with a dream of home."
+## Troubleshooting
 
-## License
+- **`node` or `npm` not found:** install Node.js 18+ and reopen the terminal.
+- **Port 3000 is already in use:** close the other app, or run `PORT=3001 npm start` (macOS/Linux) / `$env:PORT=3001; npm start` (PowerShell), then open `http://localhost:3001`.
+- **Blank page / 404:** start the server from the repository folder and open `http://localhost:3000`, not a GitHub URL or a `file://` path. Refresh after the server reports it is ready.
+- **AI request fails:** check internet access, API key, provider account/billing, model ID, and whether that provider supports chat completions. A demo works without these.
+- **Voice-over fails:** the selected provider must support its configured speech endpoint/model. Storyboards can still be exported without a voice track.
+- **Export unavailable:** use a current desktop Chrome, Edge, or Firefox browser and keep the tab open during rendering.
 
-This project is a local prototype for experimentation and learning.
+## Health check
+
+With the server running, open [http://localhost:3000/api/health](http://localhost:3000/api/health). A working server returns JSON with `"ok": true`.
