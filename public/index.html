@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101114">
+  <title>Motioncraft — AI Video Studio</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/"><span class="brand-mark">M</span><span>motioncraft<span class="brand-dot">.</span></span></a>
+    <span class="local-label"><i></i> Keys are request-only</span>
+  </header>
+  <main class="layout">
+    <section class="intro">
+      <div class="eyebrow"><span></span> AI VIDEO WORKSPACE</div>
+      <h1>Turn an idea into<br><em>an animated story.</em></h1>
+      <p class="lead">Describe your video. Get a scene plan, animated visuals, voice-over, and timed captions — ready to export.</p>
+    </section>
+
+    <section class="workspace">
+      <div class="form-panel">
+        <div class="section-heading"><div><span class="step">01</span><h2>Your video</h2></div><span class="hint">Start with an idea</span></div>
+        <label for="prompt">What should happen in the video?</label>
+        <textarea id="prompt" rows="4" placeholder="A tiny astronaut discovers a glowing garden on Mars. Make it feel hopeful and cinematic..."></textarea>
+        <div class="controls-row">
+          <div class="field grow"><label for="duration">Duration</label><div class="select-wrap"><select id="duration"><option value="15">15 seconds</option><option value="30" selected>30 seconds</option><option value="45">45 seconds</option><option value="60">60 seconds</option></select></div></div>
+          <div class="field grow"><label for="style">Visual style</label><div class="select-wrap"><select id="style"><option>Cinematic</option><option>Minimal</option><option>Playful</option><option>Dreamlike</option><option>Explainer</option></select></div></div>
+        </div>
+        <div class="section-heading provider-heading"><div><span class="step">02</span><h2>Model connection</h2></div><span class="hint">Bring your own key</span></div>
+        <div class="controls-row">
+          <div class="field grow"><label for="provider">Provider</label><div class="select-wrap"><select id="provider"><option value="openai">OpenAI</option><option value="openrouter">OpenRouter</option><option value="groq">Groq</option><option value="together">Together AI</option><option value="mistral">Mistral</option><option value="deepseek">DeepSeek</option><option value="fireworks">Fireworks AI</option></select></div></div>
+          <div class="field grow"><label for="model">Model ID</label><input id="model" value="gpt-4o-mini" autocomplete="off" placeholder="e.g. provider/model-name"></div>
+        </div>
+        <div class="field api-field"><label for="apiKey">API key <span>used for this request only</span></label><div class="key-wrap"><input id="apiKey" type="password" autocomplete="off" placeholder="Paste your provider API key"><button id="toggleKey" type="button" aria-label="Show API key">Show</button></div></div>
+        <div class="advanced-row"><label class="check-label"><input id="makeVoice" type="checkbox" checked><span class="checkmark"></span> Generate AI voice-over</label><span class="small-note">OpenAI-compatible TTS · optional</span></div>
+        <div id="voiceSettings" class="voice-settings"><div class="controls-row"><div class="field grow"><label for="voiceModel">Voice model</label><input id="voiceModel" value="tts-1" autocomplete="off"></div><div class="field grow"><label for="voice">Voice</label><div class="select-wrap"><select id="voice"><option>alloy</option><option>nova</option><option>shimmer</option><option>echo</option><option>fable</option><option>onyx</option></select></div></div></div><p class="small-note">Voice-over uses the same provider and key. TTS availability and model names vary by provider.</p></div>
+        <button id="generate" class="primary-button"><span class="button-icon">✦</span><span>Build my video</span><span class="button-arrow">→</span></button>
+        <p class="privacy-note"><span>▣</span> Your key is sent only to your selected provider and is not saved by this app.</p>
+        <div id="status" class="status" role="status" aria-live="polite"></div>
+      </div>
+
+      <div class="preview-panel">
+        <div class="section-heading preview-heading"><div><span class="step">03</span><h2>Preview & export</h2></div><span id="previewState" class="preview-state">WAITING FOR IDEA</span></div>
+        <div class="preview-frame"><canvas id="canvas" width="960" height="540" aria-label="Animation preview"></canvas><div id="emptyState" class="empty-state"><div class="play-orbit"><span>▶</span></div><strong>Your story starts here</strong><span>Your animated video will appear in this frame.</span></div><div id="renderBadge" class="render-badge hidden">● RENDERING</div></div>
+        <div class="timeline"><div class="timeline-label"><span>SCENE TIMELINE</span><span id="timeLabel">00:00 / 00:00</span></div><div id="sceneTrack" class="scene-track"><span class="track-placeholder">Your scenes will appear here</span></div></div>
+        <div class="export-row"><button id="play" class="secondary-button" disabled><span>▶</span> Play preview</button><button id="export" class="export-button" disabled><span>↓</span> Export video</button></div>
+        <div class="result-tabs"><button class="tab active" data-tab="story">Story & captions</button><button class="tab" data-tab="code">Scene code</button></div>
+        <div id="storyTab" class="result-content"><p class="empty-result">Generated scenes and captions will show up here.</p></div>
+        <div id="codeTab" class="result-content hidden"><p class="empty-result">A safe, editable scene blueprint will show up here.</p></div>
+      </div>
+    </section>
+    <footer>Built for ideas in motion <span>·</span> Video renders in your browser</footer>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
