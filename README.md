@@ -1,36 +1,70 @@
-# Motioncraft — AI Video Studio
+# Motioncraft — Full AI Video Studio
 
-A small, local-first MVP for turning a prompt into a short animated video. Choose an OpenAI-compatible provider and model, enter your own API key, generate a scene plan with narration and captions, then preview and export a WebM video.
+Motioncraft is a browser-based AI video studio for creating short animated explainers and cinematic scenes from a text prompt. It supports multiple OpenAI-compatible providers, generates a storyboard with narration and captions, adds optional AI voice-over, and exports the final animation as a WebM video.
+
+## Full feature set
+
+- Any OpenAI-compatible provider
+- Custom API key entry per request
+- Prompt-driven storyboard generation
+- Scene durations and total video length control
+- Animated canvas preview with captions and generated shapes
+- Optional voice-over generation using TTS endpoints
+- Saved project library in local storage
+- Demo prompt for quick testing
+- Downloadable WebM export
 
 ## Run locally
 
-Requires Node.js 18 or newer. No package install is required.
+Requires Node.js 18+
 
 ```bash
 npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open:
 
-## How it works
+```text
+http://localhost:3000
+```
 
-1. The selected model creates a structured scene plan: visuals, titles, narration, captions, duration, and colors.
-2. The app renders those declarative scene instructions using its built-in Canvas animation engine. Model-generated content is treated as data; generated JavaScript is never executed.
-3. Optional voice-over is generated using the provider's OpenAI-compatible `/audio/speech` endpoint.
-4. Captions are included in the animation, and the browser records the Canvas and narration into a downloadable WebM file.
+## Supported providers
 
-The **Scene code** tab displays the editable JSON-like blueprint used by the renderer. It does not evaluate arbitrary model-produced code.
+- OpenAI
+- OpenRouter
+- Groq
+- Together AI
+- Mistral
+- DeepSeek
+- Fireworks AI
 
-## Providers
+Use the provider's model name and API key as accepted by that service. Chat models must support OpenAI-compatible chat completions, and voice-over must support an OpenAI-compatible text-to-speech endpoint.
 
-OpenAI, OpenRouter, Groq, Together AI, Mistral, DeepSeek, and Fireworks AI are included. Enter a model ID accepted by the selected provider. Chat generation requires an OpenAI-compatible chat-completions API. Voice-over is optional and requires that provider to support an OpenAI-compatible `/audio/speech` API with the chosen voice model.
+## Notes
 
-Provider model names and TTS availability change over time; consult your provider's documentation for current model IDs and access requirements. Provider API usage may incur charges.
+- The API key is only used in-browser and is sent to the selected provider during the request.
+- It is not saved to disk.
+- The app stores generated project metadata locally in the browser for convenience.
+- Export is currently WebM because it is generated directly from the browser MediaRecorder.
 
-## API key handling
+## Security warning
 
-The API key is held in the page only until you leave or refresh it. For each generation request it is sent to this app's local Node server in memory and forwarded to the selected provider. The app does not save it, log it, or put it in a URL. Use only a trusted deployment, since the server operator can technically inspect requests while they are being processed. Avoid entering keys on public or untrusted hosts.
+Use this app only on trusted machines and networks. Any request sent to the local Node server includes the API key entered in the browser. The local server operator can technically inspect request data while it is being processed.
 
-## Export notes
+## Typical flow
 
-Video rendering runs in the browser. The output is WebM; use a video editor or converter if you need MP4. Export works in current browsers that support Canvas capture and MediaRecorder (for example, Chrome, Edge, and Firefox). Keep the tab open during rendering.
+1. Write a prompt.
+2. Choose a model and provider.
+3. Enter your API key.
+4. Generate the storyboard.
+5. Preview the animation.
+6. Optionally generate voice-over.
+7. Export the final WebM file.
+
+## Example prompt
+
+"A tiny astronaut discovers a glowing garden on Mars, learns to fly, and returns with a dream of home."
+
+## License
+
+This project is a local prototype for experimentation and learning.
